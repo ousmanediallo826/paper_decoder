@@ -1,0 +1,119 @@
+{
+  "profile": "CS senior. Comfortable with Python, learning C++. About 6 hours a week.",
+  "messages": [
+    {
+      "agent": "doubt",
+      "round": 1,
+      "text": "Three things bug me. First, self-attention cost grows with the square of the sequence length, and Section 4 admits it, so long documents get expensive fast. Second, they suggest sinusoidal position encodings may let the model handle longer sequences than it trained on, but they never test it. Third, almost everything rests on two WMT translation sets plus one parsing task, so we don't know how it behaves on other kinds of data."
+    },
+    {
+      "agent": "scout",
+      "round": 1,
+      "text": "I looked at what came after. The quadratic cost of attention became a whole research area: sparse attention like Longformer (2020), and FlashAttention (2022), which keeps exact attention but makes it much faster by being careful with GPU memory. On word positions, RoPE (2021) and ALiBi (2021) replaced sinusoids in many models, and the ALiBi paper showed sinusoidal encodings struggle on inputs longer than training. Still open: attention that stays cheap on very long contexts without losing quality, and position methods that generalize reliably to longer inputs.",
+      "sources": [
+        {
+          "title": "FlashAttention (arXiv 2205.14135)",
+          "uri": "https://arxiv.org/abs/2205.14135"
+        },
+        {
+          "title": "Train Short, Test Long: ALiBi (arXiv 2108.12409)",
+          "uri": "https://arxiv.org/abs/2108.12409"
+        },
+        {
+          "title": "RoFormer: Rotary Position Embedding (arXiv 2104.09864)",
+          "uri": "https://arxiv.org/abs/2104.09864"
+        },
+        {
+          "title": "Longformer (arXiv 2004.05150)",
+          "uri": "https://arxiv.org/abs/2004.05150"
+        }
+      ]
+    },
+    {
+      "agent": "tinker",
+      "round": 1,
+      "text": "With about 6 hours a week, here's what I'd build. 1) A tiny Transformer from scratch in PyTorch, character-level, a few million parameters, so the paper stops being abstract. 2) Test the paper's hope that sinusoidal positions handle longer sequences: train on short inputs, test on longer ones, and compare sinusoidal, learned, RoPE and ALiBi positions. 3) Write an attention kernel in C++ and benchmark it against PyTorch's built-in version."
+    },
+    {
+      "agent": "doubt",
+      "round": 2,
+      "text": "Tinker, idea 2 is the interesting one, but as stated it's a replication, since the ALiBi authors already ran that comparison on text. To make it a contribution, change something they didn't: a different kind of data, like source code, or very small models where a student can afford many runs. Idea 3 will mostly teach you why FlashAttention exists. Great for learning, but not new."
+    },
+    {
+      "agent": "scout",
+      "round": 2,
+      "text": "Tinker, I checked your second idea. Length extrapolation on ordinary text is well covered by now, between ALiBi and the many RoPE-scaling follow-ups. I found much less on small models trained on structured data like Python code, where line breaks and indentation carry meaning. A careful, open benchmark there is a gap a student could credibly fill.",
+      "sources": [
+        {
+          "title": "Train Short, Test Long: ALiBi (arXiv 2108.12409)",
+          "uri": "https://arxiv.org/abs/2108.12409"
+        }
+      ]
+    }
+  ],
+  "plan": {
+    "headline": "Learn the Transformer by building it, then turn one open question into a small, public benchmark others can use.",
+    "next_steps": [
+      {
+        "when": "This week",
+        "action": "Implement scaled dot-product and multi-head attention from scratch, and check your outputs against PyTorch's MultiheadAttention.",
+        "why": "You only really understand an idea once you can rebuild it and match a reference."
+      },
+      {
+        "when": "Next 2 weeks",
+        "action": "Train a character-level Transformer on a small text dataset until it generates readable text.",
+        "why": "It becomes the testbed for every experiment that follows."
+      },
+      {
+        "when": "This month",
+        "action": "Read the RoPE and ALiBi papers, then add both to your model behind a single config flag.",
+        "why": "Swapping one component while holding the rest fixed is how real comparisons are made."
+      },
+      {
+        "when": "This semester",
+        "action": "Run the Python-code length-generalization benchmark and publish the code, results and a short write-up.",
+        "why": "A public artifact other people can reuse is what gets students noticed by labs and teams."
+      }
+    ],
+    "problems": [
+      {
+        "title": "Length generalization on source code",
+        "why_it_matters": "Code models trained on short files often break on long ones, and the position method is one likely cause.",
+        "attack": "Small models train cheaply, and the metric is simple: loss by token position on longer files than seen in training.",
+        "first_step": "Collect Python files and bucket them by length, holding out every file longer than your training window.",
+        "difficulty": 3,
+        "skills": [
+          "PyTorch",
+          "Data pipelines",
+          "Experiment tracking"
+        ],
+        "fit": "Uses the Python you know now and rewards careful experiments more than big compute."
+      },
+      {
+        "title": "Faster attention on modest GPUs",
+        "why_it_matters": "Attention cost is still what limits long contexts on cheaper hardware.",
+        "attack": "FlashAttention showed that memory-aware kernels pay off, and its code is open to study.",
+        "first_step": "Profile PyTorch attention on your GPU at sequence lengths from 256 to 8,192 and plot time and memory.",
+        "difficulty": 5,
+        "skills": [
+          "C++",
+          "CUDA",
+          "Profiling"
+        ],
+        "fit": "A stretch right now, but it matches a systems-programming direction. Treat it as a learning project first."
+      },
+      {
+        "title": "What do attention heads actually learn?",
+        "why_it_matters": "Knowing what each head does helps people debug models and trust them.",
+        "attack": "In a tiny model you can inspect every head directly on simple tasks like copying or bracket matching.",
+        "first_step": "Train your tiny model on a copy task and visualize each head's attention map.",
+        "difficulty": 3,
+        "skills": [
+          "PyTorch",
+          "Visualization"
+        ],
+        "fit": "A natural side quest once your tiny Transformer works."
+      }
+    ]
+  }
+}
